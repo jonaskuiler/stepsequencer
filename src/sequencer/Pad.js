@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component } from 'react'
+import React from 'react'
 import styled from 'styled-components'
 
 type Props = {
@@ -18,7 +18,7 @@ export const Pad = (props: Props) => {
 
 const activeColor = props => props.active
   ? '#ff0000'
-  : 'rgba(0, 0, 0, 0.3)'
+  : 'rgba(255, 255, 255, 0.8)'
 
 const Container = styled.div`
   position: relative;

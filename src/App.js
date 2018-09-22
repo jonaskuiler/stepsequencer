@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import styled from 'styled-components'
+import styled, { ThemeProvider } from 'styled-components'
 import { Sequencer } from './sequencer'
 
 const Container = styled.div`
@@ -9,11 +9,18 @@ const Container = styled.div`
   justify-content: center;
 `
 
+const theme = {
+  background: 'rgba(0, 0, 0, 0.72)',
+  primary: '#0000ff'
+}
+
 class App extends Component {
   render() {
     return (
       <Container>
-        <Sequencer />
+        <ThemeProvider theme={theme}>
+          <Sequencer />
+        </ThemeProvider>
       </Container>
     )
   }

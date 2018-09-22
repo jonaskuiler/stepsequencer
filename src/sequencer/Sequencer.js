@@ -1,12 +1,26 @@
+// @flow
+
 import React, { Component } from 'react'
 import styled from 'styled-components'
-import { Step } from './Step'
 import { Pad } from './Pad'
+import { Steps } from './Steps'
+import { Controls } from './Controls'
+
+type TrackState = { [number]: boolean }
+
+type TrackAction = {
+  type: string,
+  payload: number
+}
 
 const samples = {
+  // $FlowFixMe
   BD: new Audio(require('./samples/bd01.wav')),
+  // $FlowFixMe
   HH: new Audio(require('./samples/hh01.wav')),
+  // $FlowFixMe
   SD: new Audio(require('./samples/sd01.wav')),
+  // $FlowFixMe
   RS: new Audio(require('./samples/rs01.wav')),
 }
 
@@ -16,10 +30,8 @@ const stopPlayAudio = audio => {
   audio.play()
 }
 
-export const range = length => [...new Array(length).keys()]
-
 const createNamedTrack = (name = '') => {
-  return (state = {}, action) => {
+  return (state: TrackState = {}, action: TrackAction) => {
     if (name !== action.name) {
       return state
     }
@@ -36,18 +48,32 @@ const createNamedTrack = (name = '') => {
   }
 }
 
-export class Sequencer extends Component {
-  state = {
+type Props = {}
+
+type State = {
+  instrument: string,
+  playing: boolean,
+  currentStep: number,
+  bpm: number,
+  BD: TrackState,
+  HH: TrackState,
+  SD: TrackState,
+  RS: TrackState
+}
+
+export class Sequencer extends Component<Props, State> {
+  state: State = {
     instrument: 'BD',
     playing: false,
-    currentStep: null,
-    BD: createNamedTrack('BD'),
-    HH: createNamedTrack('HH'),
-    SD: createNamedTrack('SD'),
-    RS: createNamedTrack('RS')
+    currentStep: -1,
+    bpm: 120,
+    BD: {},
+    HH: {},
+    SD: {},
+    RS: {}
   }
 
-  interval = null
+  timeout: TimeoutID
 
   onPlayPause = () => {
     if (this.state.playing) {
@@ -58,14 +84,17 @@ export class Sequencer extends Component {
   }
 
   onPlay = () => {
-    const bpm = 128
-    const steps = 16
+    const bpm = this.state.bpm
     const second = 1000
     const minute = 60 * second
-    const interval = minute / bpm / 4
+    const bpmInMs = bpm => minute / bpm / 4
 
-    this.interval = setInterval(() =>
-      this.onTick(), interval)
+    const ticker = bpm => setTimeout(() => {
+      this.timeout = ticker(bpmInMs(this.state.bpm))
+      this.onTick()
+    }, bpm)
+
+    this.timeout = ticker(bpmInMs(bpm))
 
     this.setState(prevState => ({
       playing: true,
@@ -76,15 +105,15 @@ export class Sequencer extends Component {
   }
 
   onPause = () => {
-    clearInterval(this.interval)
+    clearTimeout(this.timeout)
 
     this.setState({ playing: false })
   }
 
   onStop = () => {
-    clearInterval(this.interval)
+    clearTimeout(this.timeout)
 
-    this.setState({ playing: false, currentStep: null })
+    this.setState({ playing: false, currentStep: -1 })
   }
 
   onTick = () => {
@@ -103,7 +132,7 @@ export class Sequencer extends Component {
     })
   }
 
-  onClickNamedPad = (instrument) => () => {
+  onClickNamedPad = (instrument: string) => () => {
     const sample = samples[instrument]
 
     this.setState({ instrument })
@@ -115,7 +144,7 @@ export class Sequencer extends Component {
     }
   }
 
-  onClickStep = payload => {
+  onClickStep = (payload: number) => {
     const { instrument } = this.state
     const state = this.state[instrument]
     const sequencer = createNamedTrack(instrument)
@@ -128,42 +157,42 @@ export class Sequencer extends Component {
     this.setState({ [instrument]: nextState })
   }
 
+  onChangeBpm = (event: SyntheticEvent<HTMLInputElement>) => {
+    // $FlowFixMe
+    this.setState({ bpm: event.target.value })
+  }
+
   render () {
     const sequence = this.state[this.state.instrument]
 
     return (
       <Container>
-        <Controls>
-          <Button onClick={this.onPlayPause}>
-            {this.state.playing
-              ? 'Pause'
-              : 'Play'}
-          </Button>
-          <Button onClick={this.onStop}>Stop</Button>
-        </Controls>
-        <Steps>
-          {range(16).map((index) => {
-            const active = this.state.currentStep === index || sequence[index]
-
-            return (
-              <Step
-                key={index}
-                index={index}
-                active={active}
-                onClick={() => this.onClickStep(index)}
+        <Main>
+          <Instruments>
+            {['BD', 'HH', 'SD', 'RS'].map((name, idx) => {
+              return <StyledPad
+                key={idx}
+                onClick={this.onClickNamedPad(name)}
+                title={['Kick', 'Hihat', 'Snare', 'Rim shot'][idx]}
+                active={this.state.instrument === name}
               />
-            )
-          })}
-        </Steps>
-        <Instruments>
-          {['BD', 'HH', 'SD', 'RS'].map((name, idx) => {
-            return <StyledPad
-              onClick={this.onClickNamedPad(name)}
-              title={['Kick', 'Hihat', 'Snare', 'Rim shot'][idx]}
-              active={this.state.instrument === name}
-            />
-          })}
-        </Instruments>
+            })}
+          </Instruments>
+          <Steps
+            onClickStep={this.onClickStep}
+            currentStep={this.state.currentStep}
+            sequence={sequence}
+          />
+        </Main>
+        <Aside>
+          <Controls
+            onPlayPause={this.onPlayPause}
+            onStop={this.onStop}
+            onChangeBpm={this.onChangeBpm}
+            playing={this.state.playing}
+            bpm={this.state.bpm}
+        />
+        </Aside>
       </Container>
     )
   }
@@ -171,32 +200,35 @@ export class Sequencer extends Component {
 
 const Container = styled.div`
   display: flex;
-  flex-direction: column;
-  width: 800px;
-  height: 500px;
-  padding: 20px;
-  background-color: rgba(0, 0, 0, 0.1);
+  flex-direction: row;
+  width: 1000px;
+  height: 620px;
+  background-color: ${({ theme }) => theme.background};
+  border: 4px solid ${({ theme }) => theme.primary};
+  border-radius: 4px;
 `
 
-const Controls = styled.div`
+const Main = styled.div`
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 40px 20px 40px 40px;
 `
 
-const Button = styled.button``
+const Aside = styled.div`
+  display: flex;
+  padding: 40px 40px 40px 20px;
+`
 
 const Instruments = styled.div`
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 40px;
-  /* flex: 1; */
 `
 
 const StyledPad = styled(Pad)`
   margin: 0 10px;
-`
-
-const Steps = styled.div`
-  display: flex;
-  justify-content: space-between;
 `
