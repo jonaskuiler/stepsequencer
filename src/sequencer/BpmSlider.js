@@ -11,11 +11,11 @@ type Props = {
 export const BpmSlider = (props: Props) => {
   return <Container>
     <input
-      type="range"
-      min="60"
-      max="200"
+      type='range'
+      min='60'
+      max='200'
       value={props.value}
-      onChange={props.onChange}
+      onChange={(event) => props.onChange(event.target.value)}
     />
     <Value>{props.value}</Value>
   </Container>

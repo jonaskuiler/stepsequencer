@@ -49,7 +49,6 @@ const mapStateToProps = (state, ownProps): StateProps => {
   const playerState = selectPlayer(state)
   const tracks = selectTracks(state)
   const currentTrack = selectTrack(state, playerState.track)
-
   return {
     ...playerState,
     currentTrack,
@@ -108,15 +107,12 @@ export class Sequencer extends React.Component<Props> {
   }, delay)
 
   onTick = ({ tracks, step }: { tracks: Tracks, step: number }) => {
-    const result = []
     const keys = Object.keys(audioSamples)
 
     for (let i = 0; i < keys.length; i++) {
       let key = keys[i],
         track = tracks[key],
         sample = audioSamples[key]
-
-      console.log('key, track', key, track)
 
       if (track[step]) {
         stopPlayAudio(sample, track.volume)

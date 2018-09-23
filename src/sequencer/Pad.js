@@ -11,7 +11,7 @@ type Props = {
 }
 
 export const Pad = (props: Props) => {
-  return <Container {...props} onChange={() => props.onClick(props.name)}>
+  return <Container {...props} onClick={() => props.onClick(props.name)}>
     <Button active={props.active} />
     <Title>{props.title}</Title>
   </Container>
