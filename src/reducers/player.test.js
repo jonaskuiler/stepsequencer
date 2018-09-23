@@ -2,6 +2,7 @@ import {
   PLAY_PAUSE,
   SET_TRACK,
   SET_BPM,
+  SET_STEP,
   STOP,
   player
 } from './player'
