@@ -5,12 +5,13 @@ import styled from 'styled-components'
 
 type Props = {
   onClick: Function,
-  title: String,
-  active: Boolean
+  title: string,
+  name: string,
+  active: boolean
 }
 
 export const Pad = (props: Props) => {
-  return <Container {...props}>
+  return <Container {...props} onChange={() => props.onClick(props.name)}>
     <Button active={props.active} />
     <Title>{props.title}</Title>
   </Container>

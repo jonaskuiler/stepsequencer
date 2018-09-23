@@ -1,42 +1,35 @@
 // @flow
 
 import React from 'react'
-import { connect } from 'react-redux'
 import styled from 'styled-components'
+import { connect } from 'react-redux'
 import { Pad } from './Pad'
 import { Steps } from './Steps'
 import { Controls } from './Controls'
-import {
-  setTrack,
-  setBpm,
-  playPause,
-  stop,
-  setStep,
-  selectPlayer
-} from '../reducers/player'
-import {
-  toggleStep,
-  setTrackVolume,
-  selectTracks,
-  selectTrack
-} from '../reducers/tracks'
-
-const samples = {
-  // $FlowFixMe
-  kick: new Audio(require('./samples/bd01.wav')),
-  // $FlowFixMe
-  hihat: new Audio(require('./samples/hh01.wav')),
-  // $FlowFixMe
-  snare: new Audio(require('./samples/sd01.wav')),
-  // $FlowFixMe
-  rimshot: new Audio(require('./samples/rs01.wav')),
-}
+import { VolumeSlider } from './VolumeSlider'
+import { setTrack, setBpm, playPause, stop, setStep, selectPlayer } from '../reducers/player'
+import { toggleStep, setTrackVolume, selectTracks, selectTrack } from '../reducers/tracks'
+import { audioSamples } from './audioSamples'
 
 const stopPlayAudio = (audio, volume = 1) => {
   audio.pause()
   audio.currentTime = 0
   audio.volume = volume
   audio.play()
+}
+
+const onTick = ({ tracks, step }) => {
+  const keys = Object.keys(audioSamples)
+
+  for (let i = 0; i < keys.length; i++) {
+    let key = keys[i]
+    let track = tracks[key]
+    let sample = audioSamples[key]
+
+    if (track[step]) {
+      stopPlayAudio(sample, track.volume)
+    }
+  }
 }
 
 const mapStateToProps = (state, ownProps) => {
@@ -65,15 +58,31 @@ const mapDispatchToProps = dispatch => {
 }
 
 const enhance = connect(mapStateToProps, mapDispatchToProps)
-
 const second = 1000
 const minute = 60 * second
 
-class Sequencer extends React.Component {
+type Props = {
+  playing: boolean,
+  bpm: number,
+  track: string,
+  step: number,
+  tracks: { [string]: any },
+  currentTrack: { volume: number, [string]: any },
+  onClickNamedPad: (name: string) => {},
+  onClickStep: (name: string) => {},
+  onPlayPause: () => {},
+  onStop: () => {},
+  onChangeBpm: (bpm: number) => {},
+  setStep: (step: number) => {},
+  setTrackVolume: (track: string, value: number) => {},
+  setTrack: (string) => {},
+}
+
+class Sequencer extends React.Component<Props> {
   timeoutId: TimeoutID
 
   onClickPad = (name: string) => {
-    const sample = samples[name]
+    const sample = audioSamples[name]
     const { volume } = this.props.tracks[name]
 
     if (!this.props.playing) {
@@ -94,51 +103,40 @@ class Sequencer extends React.Component {
   }
 
   tick = delay => setTimeout(() => {
-    this.timeoutId = this.tick(minute / this.props.bpm / 4)
-    this.onTick()
-  }, delay)
-
-  onTick = () => {
     const { tracks, step } = this.props
-    const keys = Object.keys(samples)
 
+    this.timeoutId = this.tick(minute / this.props.bpm / 4)
     this.props.setStep((step + 1) % 16)
 
-    for (let i = 0; i < keys.length; i++) {
-      let key = keys[i]
-      let track = tracks[key]
-      let sample = samples[key]
-
-      if (track[step]) {
-        stopPlayAudio(sample, track.volume)
-      }
-    }
-  }
+    onTick({ tracks, step })
+  }, delay)
 
   render () {
     return <Container>
       <Main>
         <Instruments>
-          {['kick', 'snare', 'hihat', 'rimshot'].map((name, idx) => {
+          {['kick', 'snare', 'hihat', 'rimshot'].map((name, index) => {
             const volume = this.props.tracks[name].volume
+            const title = ['Kick', 'Snare', 'Hihat', 'Rim shot'][index]
 
-            return <Track key={idx}>
-              <Range
+            return <Track key={index}>
+              <VolumeSlider
+                name={name}
                 value={volume * 100}
-                onChange={event => {
-                  this.props.setTrackVolume(name, event.target.value / 100)
-                }}
+                onChange={this.props.setTrackVolume}
               />
               <StyledPad
-                onClick={() => this.onClickPad(name)}
-                title={['Kick', 'Snare', 'Hihat', 'Rim shot'][idx]}
+                name={name}
+                onClick={this.onClickPad}
+                title={title}
                 active={this.props.currentTrack === name}
               />
             </Track>
           })}
         </Instruments>
         <Steps
-          onClickStep={(step) => this.props.onClickStep(this.props.track, step)}
+          track={this.props.track}
+          onClickStep={this.props.onClickStep}
           currentStep={this.props.currentStep}
           sequence={this.props.currentTrack}
         />
@@ -156,22 +154,11 @@ class Sequencer extends React.Component {
   }
 }
 
-export default enhance(Sequencer)
+export const SequencerContainer = enhance(Sequencer)
 
 const Track = styled.div`
   display: flex;
   flex-direction: column;
-`
-
-const Range = styled.input.attrs({
-  type: 'range',
-  min: 1,
-  max: 100
-})`
-  transform: rotate(-90deg);
-  width: 100px;
-  height: 100px;
-  margin-bottom: 20px;
 `
 
 const Container = styled.div`

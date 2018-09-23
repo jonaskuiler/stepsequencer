@@ -1,1 +1,1 @@
-export { default as Sequencer } from './Sequencer'
+export * from './Sequencer'

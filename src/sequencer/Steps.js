@@ -8,7 +8,7 @@ type Sequence = { [number]: boolean }
 
 type Props = {
   onClickStep: Function,
-  // currentStep: number,
+  track: string,
   sequence: Sequence
 }
 
@@ -23,7 +23,7 @@ export const Steps = (props: Props) => (
         key={index}
         index={index}
         active={active}
-        onClick={() => props.onClickStep(index)}
+        onClick={() => props.onClickStep(props.track, index)}
       />
     })}
   </Container>
