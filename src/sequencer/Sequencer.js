@@ -95,6 +95,12 @@ export class Sequencer extends React.Component<Props> {
         clearTimeout(this.timeoutId)
       }
     }
+
+    if (this.props.tracks !== prevProps.tracks) {
+      const path = `?sequence=${btoa(JSON.stringify(this.props.tracks))}`
+
+      window.history.pushState(({ path }), '', path)
+    }
   }
 
   tick = (delay: number) => setTimeout(() => {
