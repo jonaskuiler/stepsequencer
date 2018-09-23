@@ -23,7 +23,7 @@ export const setTrackVolume = (name: string, payload: number) => ({
   payload
 })
 
-export const createNamedTrack = (name: string = '') => {
+export const createNamedTrack = (name: string) => {
   return (state: TrackState = { volume: 1 }, action: TrackAction) => {
     if (name !== action.name) {
       return state

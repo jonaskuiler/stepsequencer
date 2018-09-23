@@ -3,7 +3,7 @@ import styled, { ThemeProvider } from 'styled-components'
 import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import { reducers } from './reducers'
-import { Sequencer } from './sequencer'
+import { SequencerContainer } from './sequencer'
 
 const Container = styled.div`
   height: 100%;
@@ -25,7 +25,7 @@ class App extends Component {
       <Container>
         <Provider store={store}>
           <ThemeProvider theme={theme}>
-            <Sequencer />
+            <SequencerContainer />
           </ThemeProvider>
         </Provider>
       </Container>
