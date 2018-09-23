@@ -19,7 +19,7 @@ describe('Named track reducer', () => {
 
     const state = track(undefined, action)
 
-    expect(state).toEqual({ "5": true })
-    expect(track(state, action)).toEqual({ "5": false })
+    expect(state).toHaveProperty('5', true)
+    expect(track(state, action)).toHaveProperty('5', false)
   })
 })
