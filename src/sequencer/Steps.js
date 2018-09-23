@@ -4,10 +4,14 @@ import React, { Fragment } from 'react'
 import styled from 'styled-components'
 import { Step } from './Step'
 
-type Sequence = { [number]: boolean }
+type Sequence = {
+  volume: number,
+  [number]: boolean
+}
 
 type Props = {
   onClickStep: Function,
+  currentStep: number,
   track: string,
   sequence: Sequence
 }

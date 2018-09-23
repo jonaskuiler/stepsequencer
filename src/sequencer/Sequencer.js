@@ -11,28 +11,41 @@ import { setTrack, setBpm, playPause, stop, setStep, selectPlayer } from '../red
 import { toggleStep, setTrackVolume, selectTracks, selectTrack } from '../reducers/tracks'
 import { audioSamples } from './audioSamples'
 
-const stopPlayAudio = (audio, volume = 1) => {
+type Tracks = { [string]: any }
+
+type StateProps = {
+  playing: boolean,
+  bpm: number,
+  track: string,
+  step: number,
+  tracks: Tracks,
+  currentTrack: { volume: number, [number]: boolean },
+  currentStep: number
+}
+
+type DispatchProps = {
+  onClickNamedPad: (name: string) => {},
+  onClickStep: (name: string) => {},
+  onPlayPause: () => {},
+  onStop: () => {},
+  onChangeBpm: (bpm: number) => {},
+  setStep: (step: number) => {},
+  setTrackVolume: (track: string, value: number) => {},
+  setTrack: (string) => {},
+}
+
+type OwnProps = {}
+
+type Props = StateProps & DispatchProps & OwnProps
+
+export const stopPlayAudio = (audio: any, volume: number = 1) => {
   audio.pause()
   audio.currentTime = 0
   audio.volume = volume
   audio.play()
 }
 
-const onTick = ({ tracks, step }) => {
-  const keys = Object.keys(audioSamples)
-
-  for (let i = 0; i < keys.length; i++) {
-    let key = keys[i]
-    let track = tracks[key]
-    let sample = audioSamples[key]
-
-    if (track[step]) {
-      stopPlayAudio(sample, track.volume)
-    }
-  }
-}
-
-const mapStateToProps = (state, ownProps) => {
+const mapStateToProps = (state, ownProps): StateProps => {
   const playerState = selectPlayer(state)
   const tracks = selectTracks(state)
   const currentTrack = selectTrack(state, playerState.track)
@@ -44,41 +57,22 @@ const mapStateToProps = (state, ownProps) => {
   }
 }
 
-const mapDispatchToProps = dispatch => {
-  return {
-    onClickNamedPad: name => dispatch(setTrack(name)),
-    onClickStep: (name, step) => dispatch(toggleStep(name, step)),
-    onPlayPause: () => dispatch(playPause()),
-    onStop: () => dispatch(stop()),
-    onChangeBpm: bpm => dispatch(setBpm(bpm)),
-    setStep: step => dispatch(setStep(step)),
-    setTrackVolume: (track, value) => dispatch(setTrackVolume(track, value)),
-    setTrack: name => dispatch(setTrack(name))
-  }
-}
+const mapDispatchToProps = (dispatch): DispatchProps => ({
+  onClickNamedPad: name => dispatch(setTrack(name)),
+  onClickStep: (name, step) => dispatch(toggleStep(name, step)),
+  onPlayPause: () => dispatch(playPause()),
+  onStop: () => dispatch(stop()),
+  onChangeBpm: bpm => dispatch(setBpm(bpm)),
+  setStep: step => dispatch(setStep(step)),
+  setTrackVolume: (track, value) => dispatch(setTrackVolume(track, value)),
+  setTrack: name => dispatch(setTrack(name))
+})
 
 const enhance = connect(mapStateToProps, mapDispatchToProps)
 const second = 1000
 const minute = 60 * second
 
-type Props = {
-  playing: boolean,
-  bpm: number,
-  track: string,
-  step: number,
-  tracks: { [string]: any },
-  currentTrack: { volume: number, [string]: any },
-  onClickNamedPad: (name: string) => {},
-  onClickStep: (name: string) => {},
-  onPlayPause: () => {},
-  onStop: () => {},
-  onChangeBpm: (bpm: number) => {},
-  setStep: (step: number) => {},
-  setTrackVolume: (track: string, value: number) => {},
-  setTrack: (string) => {},
-}
-
-class Sequencer extends React.Component<Props> {
+export class Sequencer extends React.Component<Props> {
   timeoutId: TimeoutID
 
   onClickPad = (name: string) => {
@@ -89,10 +83,12 @@ class Sequencer extends React.Component<Props> {
       stopPlayAudio(sample, volume)
     }
 
-    this.props.setTrack(name)
+    if (this.props.setTrack) {
+      this.props.setTrack(name)
+    }
   }
 
-  componentDidUpdate (prevProps) {
+  componentDidUpdate (prevProps: Props) {
     if (this.props.playing !== prevProps.playing) {
       if (this.props.playing) {
         this.timeoutId = this.tick(minute / this.props.bpm)
@@ -102,14 +98,31 @@ class Sequencer extends React.Component<Props> {
     }
   }
 
-  tick = delay => setTimeout(() => {
+  tick = (delay: number) => setTimeout(() => {
     const { tracks, step } = this.props
 
     this.timeoutId = this.tick(minute / this.props.bpm / 4)
     this.props.setStep((step + 1) % 16)
 
-    onTick({ tracks, step })
+    this.onTick({ tracks, step })
   }, delay)
+
+  onTick = ({ tracks, step }: { tracks: Tracks, step: number }) => {
+    const result = []
+    const keys = Object.keys(audioSamples)
+
+    for (let i = 0; i < keys.length; i++) {
+      let key = keys[i],
+        track = tracks[key],
+        sample = audioSamples[key]
+
+      console.log('key, track', key, track)
+
+      if (track[step]) {
+        stopPlayAudio(sample, track.volume)
+      }
+    }
+  }
 
   render () {
     return <Container>
