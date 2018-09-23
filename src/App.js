@@ -1,5 +1,8 @@
 import React, { Component } from 'react'
 import styled, { ThemeProvider } from 'styled-components'
+import { Provider } from 'react-redux'
+import { createStore } from 'redux'
+import { reducers } from './reducers'
 import { Sequencer } from './sequencer'
 
 const Container = styled.div`
@@ -14,13 +17,17 @@ const theme = {
   primary: '#0000ff'
 }
 
+const store = createStore(reducers)
+
 class App extends Component {
   render() {
     return (
       <Container>
-        <ThemeProvider theme={theme}>
-          <Sequencer />
-        </ThemeProvider>
+        <Provider store={store}>
+          <ThemeProvider theme={theme}>
+            <Sequencer />
+          </ThemeProvider>
+        </Provider>
       </Container>
     )
   }

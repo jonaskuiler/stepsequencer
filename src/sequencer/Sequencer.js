@@ -1,202 +1,178 @@
 // @flow
 
-import React, { Component } from 'react'
+import React from 'react'
+import { connect } from 'react-redux'
 import styled from 'styled-components'
 import { Pad } from './Pad'
 import { Steps } from './Steps'
 import { Controls } from './Controls'
-
-type TrackState = { [number]: boolean }
-
-type TrackAction = {
-  type: string,
-  payload: number
-}
+import {
+  setTrack,
+  setBpm,
+  playPause,
+  stop,
+  setStep,
+  selectPlayer
+} from '../reducers/player'
+import {
+  toggleStep,
+  setTrackVolume,
+  selectTracks,
+  selectTrack
+} from '../reducers/tracks'
 
 const samples = {
   // $FlowFixMe
-  BD: new Audio(require('./samples/bd01.wav')),
+  kick: new Audio(require('./samples/bd01.wav')),
   // $FlowFixMe
-  HH: new Audio(require('./samples/hh01.wav')),
+  hihat: new Audio(require('./samples/hh01.wav')),
   // $FlowFixMe
-  SD: new Audio(require('./samples/sd01.wav')),
+  snare: new Audio(require('./samples/sd01.wav')),
   // $FlowFixMe
-  RS: new Audio(require('./samples/rs01.wav')),
+  rimshot: new Audio(require('./samples/rs01.wav')),
 }
 
-const stopPlayAudio = audio => {
+const stopPlayAudio = (audio, volume = 1) => {
   audio.pause()
   audio.currentTime = 0
+  audio.volume = volume
   audio.play()
 }
 
-const createNamedTrack = (name = '') => {
-  return (state: TrackState = {}, action: TrackAction) => {
-    if (name !== action.name) {
-      return state
-    }
+const mapStateToProps = (state, ownProps) => {
+  const playerState = selectPlayer(state)
+  const tracks = selectTracks(state)
+  const currentTrack = selectTrack(state, playerState.track)
 
-    switch (action.type) {
-      case 'TOGGLE_STEP':
-        return {
-          ...state,
-          [action.payload]: !state[action.payload]
-        }
-      default:
-        return state
-    }
+  return {
+    ...playerState,
+    currentTrack,
+    tracks
   }
 }
 
-type Props = {}
-
-type State = {
-  instrument: string,
-  playing: boolean,
-  currentStep: number,
-  bpm: number,
-  BD: TrackState,
-  HH: TrackState,
-  SD: TrackState,
-  RS: TrackState
+const mapDispatchToProps = dispatch => {
+  return {
+    onClickNamedPad: name => dispatch(setTrack(name)),
+    onClickStep: (name, step) => dispatch(toggleStep(name, step)),
+    onPlayPause: () => dispatch(playPause()),
+    onStop: () => dispatch(stop()),
+    onChangeBpm: bpm => dispatch(setBpm(bpm)),
+    setStep: step => dispatch(setStep(step)),
+    setTrackVolume: (track, value) => dispatch(setTrackVolume(track, value)),
+    setTrack: name => dispatch(setTrack(name))
+  }
 }
 
-export class Sequencer extends Component<Props, State> {
-  state: State = {
-    instrument: 'BD',
-    playing: false,
-    currentStep: -1,
-    bpm: 120,
-    BD: {},
-    HH: {},
-    SD: {},
-    RS: {}
+const enhance = connect(mapStateToProps, mapDispatchToProps)
+
+const second = 1000
+const minute = 60 * second
+
+class Sequencer extends React.Component {
+  timeoutId: TimeoutID
+
+  onClickPad = (name: string) => {
+    const sample = samples[name]
+    const { volume } = this.props.tracks[name]
+
+    if (!this.props.playing) {
+      stopPlayAudio(sample, volume)
+    }
+
+    this.props.setTrack(name)
   }
 
-  timeout: TimeoutID
-
-  onPlayPause = () => {
-    if (this.state.playing) {
-      this.onPause()
-    } else {
-      this.onPlay()
+  componentDidUpdate (prevProps) {
+    if (this.props.playing !== prevProps.playing) {
+      if (this.props.playing) {
+        this.timeoutId = this.tick(minute / this.props.bpm)
+      } else {
+        clearTimeout(this.timeoutId)
+      }
     }
   }
 
-  onPlay = () => {
-    const bpm = this.state.bpm
-    const second = 1000
-    const minute = 60 * second
-    const bpmInMs = bpm => minute / bpm / 4
-
-    const ticker = bpm => setTimeout(() => {
-      this.timeout = ticker(bpmInMs(this.state.bpm))
-      this.onTick()
-    }, bpm)
-
-    this.timeout = ticker(bpmInMs(bpm))
-
-    this.setState(prevState => ({
-      playing: true,
-      currentStep: prevState !== null
-        ? prevState.currentStep
-        : 0
-    }))
-  }
-
-  onPause = () => {
-    clearTimeout(this.timeout)
-
-    this.setState({ playing: false })
-  }
-
-  onStop = () => {
-    clearTimeout(this.timeout)
-
-    this.setState({ playing: false, currentStep: -1 })
-  }
+  tick = delay => setTimeout(() => {
+    this.timeoutId = this.tick(minute / this.props.bpm / 4)
+    this.onTick()
+  }, delay)
 
   onTick = () => {
-    this.setState(prevState => ({
-      currentStep: (prevState.currentStep + 1) % 16
-    }), () => {
-      const instruments = ['BD', 'HH', 'SD', 'RS']
+    const { tracks, step } = this.props
+    const keys = Object.keys(samples)
 
-      for (let i = 0; i < instruments.length; i++) {
-        let name = instruments[i]
+    this.props.setStep((step + 1) % 16)
 
-        if (this.state[name][this.state.currentStep]) {
-          stopPlayAudio(samples[name])
-        }
+    for (let i = 0; i < keys.length; i++) {
+      let key = keys[i]
+      let track = tracks[key]
+      let sample = samples[key]
+
+      if (track[step]) {
+        stopPlayAudio(sample, track.volume)
       }
-    })
-  }
-
-  onClickNamedPad = (instrument: string) => () => {
-    const sample = samples[instrument]
-
-    this.setState({ instrument })
-
-    if (!this.state.playing) {
-      sample.pause()
-      sample.currentTime = 0
-      sample.play()
     }
-  }
-
-  onClickStep = (payload: number) => {
-    const { instrument } = this.state
-    const state = this.state[instrument]
-    const sequencer = createNamedTrack(instrument)
-    const nextState = sequencer(state, {
-      type: 'TOGGLE_STEP',
-      name: instrument,
-      payload
-    })
-
-    this.setState({ [instrument]: nextState })
-  }
-
-  onChangeBpm = (event: SyntheticEvent<HTMLInputElement>) => {
-    // $FlowFixMe
-    this.setState({ bpm: event.target.value })
   }
 
   render () {
-    const sequence = this.state[this.state.instrument]
+    return <Container>
+      <Main>
+        <Instruments>
+          {['kick', 'snare', 'hihat', 'rimshot'].map((name, idx) => {
+            const volume = this.props.tracks[name].volume
 
-    return (
-      <Container>
-        <Main>
-          <Instruments>
-            {['BD', 'HH', 'SD', 'RS'].map((name, idx) => {
-              return <StyledPad
-                key={idx}
-                onClick={this.onClickNamedPad(name)}
-                title={['Kick', 'Hihat', 'Snare', 'Rim shot'][idx]}
-                active={this.state.instrument === name}
+            return <Track key={idx}>
+              <Range
+                value={volume * 100}
+                onChange={event => {
+                  this.props.setTrackVolume(name, event.target.value / 100)
+                }}
               />
-            })}
-          </Instruments>
-          <Steps
-            onClickStep={this.onClickStep}
-            currentStep={this.state.currentStep}
-            sequence={sequence}
-          />
-        </Main>
-        <Aside>
-          <Controls
-            onPlayPause={this.onPlayPause}
-            onStop={this.onStop}
-            onChangeBpm={this.onChangeBpm}
-            playing={this.state.playing}
-            bpm={this.state.bpm}
+              <StyledPad
+                onClick={() => this.onClickPad(name)}
+                title={['Kick', 'Snare', 'Hihat', 'Rim shot'][idx]}
+                active={this.props.currentTrack === name}
+              />
+            </Track>
+          })}
+        </Instruments>
+        <Steps
+          onClickStep={(step) => this.props.onClickStep(this.props.track, step)}
+          currentStep={this.props.currentStep}
+          sequence={this.props.currentTrack}
         />
-        </Aside>
-      </Container>
-    )
+      </Main>
+      <Aside>
+        <Controls
+          onPlayPause={this.props.onPlayPause}
+          onStop={this.props.onStop}
+          onChangeBpm={this.props.onChangeBpm}
+          playing={this.props.playing}
+          bpm={this.props.bpm}
+        />
+      </Aside>
+    </Container>
   }
 }
+
+export default enhance(Sequencer)
+
+const Track = styled.div`
+  display: flex;
+  flex-direction: column;
+`
+
+const Range = styled.input.attrs({
+  type: 'range',
+  min: 1,
+  max: 100
+})`
+  transform: rotate(-90deg);
+  width: 100px;
+  height: 100px;
+  margin-bottom: 20px;
+`
 
 const Container = styled.div`
   display: flex;
