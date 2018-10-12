@@ -150,6 +150,7 @@ export class Sequencer extends React.Component<Props> {
           })}
         </Instruments>
         <Steps
+          playing={this.props.playing}
           track={this.props.track}
           onClickStep={this.props.onClickStep}
           currentStep={this.props.currentStep}

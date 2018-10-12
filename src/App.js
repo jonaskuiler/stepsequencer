@@ -24,8 +24,6 @@ try {
   const params = new URLSearchParams(window.location.search)
   const sequence = params.get('sequence')
 
-  console.log('sequence', sequence)
-
   initialState = { tracks: JSON.parse(atob(sequence)) }
 } catch (error) {
   initialState = {}

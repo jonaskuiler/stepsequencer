@@ -12,6 +12,7 @@ type Sequence = {
 type Props = {
   onClickStep: Function,
   currentStep: number,
+  playing: boolean,
   track: string,
   sequence: Sequence
 }
@@ -21,7 +22,8 @@ export const range = (length: number) => [...new Array(length).keys()]
 export const Steps = (props: Props) => (
   <Container>
     {range(16).map((index) => {
-      const active = props.sequence[index]
+      const active = (index === props.currentStep)
+        || props.sequence[index]
 
       return <Step
         key={index}
